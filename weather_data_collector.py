@@ -1,30 +1,38 @@
-import requests
-import time
-import json
-import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-import os
+import requests # To make HTTP requests to the weather API.
+import time # For delays, rate limiting, and timestamps.
+import json # For handling JSON responses (used implicitly).
+import logging # For tracking activity, errors, and debugging info.
+from datetime import datetime, timedelta #To handle timestamps.
+from typing import Dict, List, Optional # Provides type hints like Dict, List, and Optional.
+import os # For accessing environment variables (used in related configs).
 
 class WeatherDataCollector:
     """
     A production-ready weather data collector with error handling,
     rate limiting, and robust data validation.
+
+    This class encapsulates everything needed to fetch, validate, and clean 
+    weather data from the OpenWeatherMap API in a resilient and reusable way.
     """
     
-    def __init__(self, api_key: str, base_url: str = "http://api.openweathermap.org/data/2.5"):
+    def __init__(self, api_key: str, base_url: str = "http://api.openweathermap.org/data/2.5"): 
+        # Store API credentials and base URL
         self.api_key = api_key
         self.base_url = base_url
-        self.session = requests.Session()  # Reuse connections
+        self.session = requests.Session()  # Reuse connections & keeps connections alive
         self.last_request_time = 0
         self.min_request_interval = 1.0  # Minimum seconds between requests
         
-        # Set up logging
+        # Set up logging so that warnings and errors can be tracked
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
         
     def _respect_rate_limit(self):
-        """Ensure we don't exceed API rate limits."""
+        """Ensure we don't exceed API rate limits.
+        Checks how long it's been since the last API request.
+        If not enough time has passed (based on the rate limit), it pauses the program.
+        Ensures we don't accidentally get blocked for making too many requests too quickly.
+        """
         time_since_last = time.time() - self.last_request_time
         if time_since_last < self.min_request_interval:
             sleep_time = self.min_request_interval - time_since_last
@@ -37,12 +45,23 @@ class WeatherDataCollector:
         """
         self._respect_rate_limit()
         
+        # Attaches the API key to the query parameters.
+        # Constructs the full API URL.
         params['appid'] = self.api_key
         url = f"{self.base_url}/{endpoint}"
         
+        # Attempts up to 3 retries if errors occur.
         max_retries = 3
         retry_delays = [1, 2, 4]  # Exponential backoff
         
+
+        """
+        200 OK: Success
+        429: Too many requests → wait 60 seconds
+        401: Invalid key → abort
+        Other HTTP codes: Log and retry
+        RequestExceptions: Handle connectivity errors, timeouts, etc.
+        """
         for attempt in range(max_retries):
             try:
                 response = self.session.get(url, params=params, timeout=10)
@@ -67,6 +86,7 @@ class WeatherDataCollector:
                 time.sleep(retry_delays[attempt])
         
         self.logger.error(f"Failed to fetch data after {max_retries} attempts")
+        # If all attempts fail, it logs a critical error and returns None.
         return None
     
     def get_current_weather(self, city: str, country_code: str = None) -> Optional[Dict]:
@@ -76,6 +96,7 @@ class WeatherDataCollector:
         location = city
         if country_code:
             location += f",{country_code}"
+        # Combines the city and country code into one location string.S
             
         params = {
             'q': location,
@@ -90,6 +111,9 @@ class WeatherDataCollector:
     def _validate_and_clean_current_weather(self, raw_data: Dict) -> Optional[Dict]:
         """
         Validate and clean the weather data before storage.
+        Extracts and reshapes data from the raw API JSON into a cleaner structure.
+        Ensures all numeric fields are valid types.
+        Handles missing nested fields using .get() with defaults.
         """
         try:
             cleaned_data = {
@@ -123,3 +147,6 @@ class WeatherDataCollector:
         except (KeyError, ValueError, TypeError) as e:
             self.logger.error(f"Data validation failed: {e}")
             return None
+        
+        # If parsing fails (e.g., raw_data['main']['temp'] doesn’t exist or is not a float), the error is logged and the result is discarded.S
+
