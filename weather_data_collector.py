@@ -148,5 +148,6 @@ class WeatherDataCollector:
             self.logger.error(f"Data validation failed: {e}")
             return None
         
-        # If parsing fails (e.g., raw_data['main']['temp'] doesn’t exist or is not a float), the error is logged and the result is discarded.S
+        # If parsing fails (e.g., raw_data['main']['temp'] doesn’t exist or is not a float), the error is logged and the 
+        # result is discarded.
 

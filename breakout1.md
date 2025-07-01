@@ -1,6 +1,6 @@
 Breakout #1: Implementing Error-Resistant API Integration
 
-Activity: In pairs, implement a robust weather data collector with comprehensive error handling.
+Activity: In your groups, implement a robust weather data collector with comprehensive error handling.
 
 Instructions:
 

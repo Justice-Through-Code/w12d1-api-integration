@@ -7,6 +7,7 @@ class Config:
     This class holds all the configuration values needed by your app — 
     things like API credentials, file paths, and retry settings.
     """
+
     api_key: str            # Required credential to authenticate with the weather API
     database_path: str      # Path to the SQLite database file for storing weather data
     log_level: str = "INFO" # Controls logging verbosity: DEBUG, INFO, WARNING, etc.
